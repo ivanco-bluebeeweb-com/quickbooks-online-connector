@@ -52,26 +52,25 @@ def _connections_section(connections: list[dict]) -> ui.UINode:
 
 
 def _connect_section() -> ui.UINode:
-    return ui.Stack(direction="v", gap=3, align="stretch", className="full-width", children=[
+    return ui.Stack(direction="v", gap=3, align="stretch", children=[
         ui.Button("How do I set this up?", variant="ghost", size="sm",
                   icon="HelpCircle",
                   on_click=ui.Call("__panel__quickbooks_connect_help")),
         ui.Form(
             action="connect_quickbooks",
             submit_label="Get authorize link",
-            className="full-width",
             children=[
-                ui.Stack(direction="v", gap=1, align="stretch", className="full-width", children=[
+                ui.Stack(direction="v", gap=1, align="stretch", children=[
                     ui.Text("Intuit app Client ID", variant="caption"),
                     ui.Input(param_name="client_id",
                              placeholder="Paste your Intuit Developer app's Client ID"),
                 ]),
-                ui.Stack(direction="v", gap=1, align="stretch", className="full-width", children=[
+                ui.Stack(direction="v", gap=1, align="stretch", children=[
                     ui.Text("Intuit app Client Secret", variant="caption"),
                     ui.Password(param_name="client_secret",
                                 placeholder="Paste your Intuit Developer app's Client Secret"),
                 ]),
-                ui.Stack(direction="v", gap=1, align="stretch", className="full-width", children=[
+                ui.Stack(direction="v", gap=1, align="stretch", children=[
                     ui.Text("Label (optional)", variant="caption"),
                     ui.Input(param_name="label", placeholder="e.g. Acme Corp books"),
                 ]),
