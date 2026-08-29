@@ -1,0 +1,1117 @@
+{
+  "manifest_schema_version": 3,
+  "sdk_version": "5.13.0",
+  "app_id": "quickbooks-online-connector",
+  "version": "0.1.0",
+  "name": "QuickBooks Online",
+  "description": "Connect your own QuickBooks Online company (Intuit OAuth2) to manage invoices, bills, customers, vendors, items, payments, estimates, sales receipts, credit memos, journal entries, and run reports (P&L, Balance Sheet, Cash Flow, AR/AP aging) -- full read/write plus value-add reports like cash position and overdue-invoice tracking.",
+  "icon": "icon.svg",
+  "actions_explicit": true,
+  "system": false,
+  "capabilities": [
+    "quickbooks:read",
+    "quickbooks:write"
+  ],
+  "tools": [
+    {
+      "name": "connect_quickbooks",
+      "description": "Start connecting your QuickBooks Online company: register your Intuit Developer app's Client ID/Client Secret, then get back a one-time browser authorize_url. Open it, sign in with Intuit, pick a company, and approve access -- QuickBooks redirects back here automatically and the connection finishes itself, no further action needed.",
+      "action_type": "write",
+      "chain_callable": true,
+      "effects": [
+        "quickbooks.connection.pending"
+      ],
+      "id_projection": "",
+      "params_schema": {
+        "properties": {
+          "client_id": {
+            "default": "",
+            "description": "Your Intuit Developer app's Client ID (developer.intuit.com > My Apps > your app > Keys & OAuth).",
+            "title": "Client Id",
+            "type": "string"
+          },
+          "client_secret": {
+            "default": "",
+            "description": "Your Intuit Developer app's Client Secret.",
+            "title": "Client Secret",
+            "type": "string"
+          },
+          "label": {
+            "default": "",
+            "description": "Optional friendly label for this company connection, e.g. 'Acme Corp books'.",
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "title": "ConnectQuickbooksParams",
+        "type": "object"
+      },
+      "return_schema": {
+        "properties": {
+          "authorize_url": {
+            "description": "Open this URL in a browser to sign in with Intuit, pick a company, and approve access. QuickBooks redirects back here automatically once you approve.",
+            "title": "Authorize Url",
+            "type": "string"
+          },
+          "redirect_uri": {
+            "description": "The callback URL registered for this attempt (must match a Redirect URI configured on your Intuit app).",
+            "title": "Redirect Uri",
+            "type": "string"
+          }
+        },
+        "required": [
+          "authorize_url",
+          "redirect_uri"
+        ],
+        "title": "ConsentUrlResult",
+        "type": "object"
+      },
+      "event": "quickbooks-connector.connect",
+      "background": false,
+      "long_running": false,
+      "scopes": [],
+      "owner_chat_tool": "quickbooks"
+    },
+    {
+      "name": "list_connections",
+      "description": "List the connected QuickBooks Online companies and whether each saved connection still works.",
+      "action_type": "read",
+      "chain_callable": true,
+      "effects": [],
+      "id_projection": "",
+      "params_schema": {
+        "description": "Explicit empty params model -- V17 disallows untyped handlers.",
+        "properties": {},
+        "title": "NoParams",
+        "type": "object"
+      },
+      "return_schema": {
+        "$defs": {
+          "ProviderConnection": {
+            "properties": {
+              "id": {
+                "title": "Id",
+                "type": "string"
+              },
+              "title": {
+                "default": "",
+                "title": "Title",
+                "type": "string"
+              },
+              "connected": {
+                "default": true,
+                "title": "Connected",
+                "type": "boolean"
+              },
+              "detail": {
+                "default": "",
+                "title": "Detail",
+                "type": "string"
+              },
+              "realm_id": {
+                "default": "",
+                "title": "Realm Id",
+                "type": "string"
+              },
+              "company_name": {
+                "default": "",
+                "title": "Company Name",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "title": "ProviderConnection",
+            "type": "object"
+          }
+        },
+        "properties": {
+          "connections": {
+            "items": {
+              "$ref": "#/$defs/ProviderConnection"
+            },
+            "title": "Connections",
+            "type": "array"
+          }
+        },
+        "title": "ProviderConnectionList",
+        "type": "object"
+      },
+      "event": "",
+      "background": false,
+      "long_running": false,
+      "scopes": [],
+      "owner_chat_tool": "quickbooks"
+    },
+    {
+      "name": "disconnect_quickbooks",
+      "description": "Disconnect a QuickBooks Online company: deletes the saved connection. Nothing in QuickBooks itself is changed.",
+      "action_type": "destructive",
+      "chain_callable": true,
+      "effects": [
+        "quickbooks.connection.removed"
+      ],
+      "id_projection": "",
+      "params_schema": {
+        "properties": {
+          "connection_id": {
+            "description": "The connection id to disconnect (see list_connections).",
+            "title": "Connection Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "connection_id"
+        ],
+        "title": "DisconnectQuickbooksParams",
+        "type": "object"
+      },
+      "return_schema": {
+        "properties": {
+          "deleted": {
+            "default": true,
+            "title": "Deleted",
+            "type": "boolean"
+          },
+          "detail": {
+            "default": "",
+            "title": "Detail",
+            "type": "string"
+          }
+        },
+        "title": "DeleteResult",
+        "type": "object"
+      },
+      "event": "quickbooks-connector.disconnect",
+      "background": false,
+      "long_running": false,
+      "scopes": [],
+      "owner_chat_tool": "quickbooks"
+    },
+    {
+      "name": "list_entities",
+      "description": "List QuickBooks records of any entity type (Customer, Vendor, Employee, Item, Invoice, Bill, Payment, Estimate, SalesReceipt, CreditMemo, JournalEntry, Purchase, PurchaseOrder, VendorCredit, Deposit, Transfer, Account, Class, Department, TaxCode, Term, Attachable), with an optional WHERE filter fragment.",
+      "action_type": "read",
+      "chain_callable": true,
+      "effects": [],
+      "id_projection": "",
+      "params_schema": {
+        "properties": {
+          "connection_id": {
+            "default": "",
+            "description": "Which connected QuickBooks company to use (see list_connections). Omit if only one company is connected.",
+            "title": "Connection Id",
+            "type": "string"
+          },
+          "entity": {
+            "description": "QuickBooks entity name, e.g. 'Customer', 'Vendor', 'Employee', 'Item', 'Invoice', 'Bill', 'Payment', 'Estimate', 'SalesReceipt', 'CreditMemo', 'JournalEntry', 'Purchase', 'PurchaseOrder', 'VendorCredit', 'Deposit', 'Transfer', 'Account', 'Class', 'Department', 'TaxCode', 'Term', 'Attachable'.",
+            "title": "Entity",
+            "type": "string"
+          },
+          "where": {
+            "default": "",
+            "description": "Optional SQL-like WHERE clause fragment, e.g. \"Active = true\" or \"Balance > '100'\".",
+            "title": "Where",
+            "type": "string"
+          },
+          "max_results": {
+            "default": 100,
+            "description": "Max rows to return (QuickBooks caps at 1000 per page).",
+            "title": "Max Results",
+            "type": "integer"
+          },
+          "start_position": {
+            "default": 1,
+            "description": "1-based pagination offset.",
+            "title": "Start Position",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "entity"
+        ],
+        "title": "ListEntitiesParams",
+        "type": "object"
+      },
+      "return_schema": {
+        "properties": {
+          "entity": {
+            "default": "",
+            "title": "Entity",
+            "type": "string"
+          },
+          "rows": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "total_shown": {
+            "default": 0,
+            "title": "Total Shown",
+            "type": "integer"
+          }
+        },
+        "title": "EntityList",
+        "type": "object"
+      },
+      "event": "",
+      "background": false,
+      "long_running": false,
+      "scopes": [],
+      "owner_chat_tool": "quickbooks"
+    },
+    {
+      "name": "get_entity",
+      "description": "Read one QuickBooks record of any entity type in full by its Id (e.g. get one Invoice, Customer, Bill).",
+      "action_type": "read",
+      "chain_callable": true,
+      "effects": [],
+      "id_projection": "",
+      "params_schema": {
+        "properties": {
+          "connection_id": {
+            "default": "",
+            "description": "Which connected QuickBooks company to use (see list_connections). Omit if only one company is connected.",
+            "title": "Connection Id",
+            "type": "string"
+          },
+          "entity": {
+            "description": "QuickBooks entity name, e.g. 'Invoice'.",
+            "title": "Entity",
+            "type": "string"
+          },
+          "entity_id": {
+            "description": "The entity's Id.",
+            "title": "Entity Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entity",
+          "entity_id"
+        ],
+        "title": "GetEntityParams",
+        "type": "object"
+      },
+      "return_schema": {
+        "properties": {
+          "entity": {
+            "default": "",
+            "title": "Entity",
+            "type": "string"
+          },
+          "data": {
+            "additionalProperties": true,
+            "title": "Data",
+            "type": "object"
+          }
+        },
+        "title": "EntityDetail",
+        "type": "object"
+      },
+      "event": "",
+      "background": false,
+      "long_running": false,
+      "scopes": [],
+      "owner_chat_tool": "quickbooks"
+    },
+    {
+      "name": "create_entity",
+      "description": "Create a new QuickBooks record of any entity type (e.g. a new Invoice, Customer, Bill, Item, Payment) from a JSON object of its fields exactly as QuickBooks expects.",
+      "action_type": "write",
+      "chain_callable": true,
+      "effects": [
+        "quickbooks.entity.created"
+      ],
+      "id_projection": "",
+      "params_schema": {
+        "properties": {
+          "connection_id": {
+            "default": "",
+            "description": "Which connected QuickBooks company to use (see list_connections). Omit if only one company is connected.",
+            "title": "Connection Id",
+            "type": "string"
+          },
+          "entity": {
+            "description": "QuickBooks entity name to create, e.g. 'Invoice', 'Customer', 'Bill'.",
+            "title": "Entity",
+            "type": "string"
+          },
+          "fields_json": {
+            "description": "JSON object of the entity's fields exactly as QuickBooks expects (e.g. '{\"DisplayName\":\"Acme Co\"}' for a Customer, or a full Invoice body with Line items).",
+            "title": "Fields Json",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entity",
+          "fields_json"
+        ],
+        "title": "CreateEntityParams",
+        "type": "object"
+      },
+      "return_schema": {
+        "properties": {
+          "entity": {
+            "default": "",
+            "title": "Entity",
+            "type": "string"
+          },
+          "data": {
+            "additionalProperties": true,
+            "title": "Data",
+            "type": "object"
+          }
+        },
+        "title": "EntityDetail",
+        "type": "object"
+      },
+      "event": "quickbooks-connector.create_entity",
+      "background": false,
+      "long_running": false,
+      "scopes": [],
+      "owner_chat_tool": "quickbooks"
+    },
+    {
+      "name": "update_entity",
+      "description": "Update selected fields of an existing QuickBooks record (sparse update, merged onto the existing entity). Requires the entity's current SyncToken from get_entity -- QuickBooks enforces optimistic concurrency.",
+      "action_type": "write",
+      "chain_callable": true,
+      "effects": [
+        "quickbooks.entity.updated"
+      ],
+      "id_projection": "",
+      "params_schema": {
+        "properties": {
+          "connection_id": {
+            "default": "",
+            "description": "Which connected QuickBooks company to use (see list_connections). Omit if only one company is connected.",
+            "title": "Connection Id",
+            "type": "string"
+          },
+          "entity": {
+            "description": "QuickBooks entity name to update.",
+            "title": "Entity",
+            "type": "string"
+          },
+          "entity_id": {
+            "description": "The entity's Id.",
+            "title": "Entity Id",
+            "type": "string"
+          },
+          "sync_token": {
+            "description": "The entity's current SyncToken (from get_entity) -- QuickBooks requires this for optimistic concurrency on every update.",
+            "title": "Sync Token",
+            "type": "string"
+          },
+          "fields_json": {
+            "description": "JSON object of the fields to change, merged onto the existing entity (sparse update).",
+            "title": "Fields Json",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entity",
+          "entity_id",
+          "sync_token",
+          "fields_json"
+        ],
+        "title": "UpdateEntityParams",
+        "type": "object"
+      },
+      "return_schema": {
+        "properties": {
+          "entity": {
+            "default": "",
+            "title": "Entity",
+            "type": "string"
+          },
+          "data": {
+            "additionalProperties": true,
+            "title": "Data",
+            "type": "object"
+          }
+        },
+        "title": "EntityDetail",
+        "type": "object"
+      },
+      "event": "quickbooks-connector.update_entity",
+      "background": false,
+      "long_running": false,
+      "scopes": [],
+      "owner_chat_tool": "quickbooks"
+    },
+    {
+      "name": "delete_entity",
+      "description": "Delete/void a QuickBooks record. Most QBO transaction entities (Invoice, Bill, Payment, ...) support delete=true instead of true deletion; a handful of master-data entities (Customer, Vendor, Item, Account) cannot be deleted at all by QuickBooks and are instead deactivated via update_entity (set Active=false).",
+      "action_type": "destructive",
+      "chain_callable": true,
+      "effects": [
+        "quickbooks.entity.deleted"
+      ],
+      "id_projection": "",
+      "params_schema": {
+        "properties": {
+          "connection_id": {
+            "default": "",
+            "description": "Which connected QuickBooks company to use (see list_connections). Omit if only one company is connected.",
+            "title": "Connection Id",
+            "type": "string"
+          },
+          "entity": {
+            "description": "QuickBooks entity name to void/delete, e.g. 'Invoice', 'Bill', 'Payment' (most QBO transaction entities support delete=true instead of true deletion).",
+            "title": "Entity",
+            "type": "string"
+          },
+          "entity_id": {
+            "description": "The entity's Id.",
+            "title": "Entity Id",
+            "type": "string"
+          },
+          "sync_token": {
+            "description": "The entity's current SyncToken (from get_entity).",
+            "title": "Sync Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entity",
+          "entity_id",
+          "sync_token"
+        ],
+        "title": "DeleteEntityParams",
+        "type": "object"
+      },
+      "return_schema": {
+        "properties": {
+          "deleted": {
+            "default": true,
+            "title": "Deleted",
+            "type": "boolean"
+          },
+          "detail": {
+            "default": "",
+            "title": "Detail",
+            "type": "string"
+          }
+        },
+        "title": "DeleteResult",
+        "type": "object"
+      },
+      "event": "quickbooks-connector.delete_entity",
+      "background": false,
+      "long_running": false,
+      "scopes": [],
+      "owner_chat_tool": "quickbooks"
+    },
+    {
+      "name": "send_entity",
+      "description": "Email a QuickBooks transaction (Invoice, Estimate, SalesReceipt, CreditMemo) to its customer, or to an override address.",
+      "action_type": "write",
+      "chain_callable": true,
+      "effects": [
+        "quickbooks.entity.sent"
+      ],
+      "id_projection": "",
+      "params_schema": {
+        "properties": {
+          "connection_id": {
+            "default": "",
+            "description": "Which connected QuickBooks company to use (see list_connections). Omit if only one company is connected.",
+            "title": "Connection Id",
+            "type": "string"
+          },
+          "entity": {
+            "description": "Entity type to email, e.g. 'Invoice' or 'Estimate'.",
+            "title": "Entity",
+            "type": "string"
+          },
+          "entity_id": {
+            "description": "The entity's Id.",
+            "title": "Entity Id",
+            "type": "string"
+          },
+          "send_to": {
+            "default": "",
+            "description": "Override recipient email address. Omit to use the entity's own BillEmail.",
+            "title": "Send To",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entity",
+          "entity_id"
+        ],
+        "title": "SendEntityParams",
+        "type": "object"
+      },
+      "return_schema": {
+        "properties": {
+          "entity": {
+            "default": "",
+            "title": "Entity",
+            "type": "string"
+          },
+          "data": {
+            "additionalProperties": true,
+            "title": "Data",
+            "type": "object"
+          }
+        },
+        "title": "EntityDetail",
+        "type": "object"
+      },
+      "event": "quickbooks-connector.send_entity",
+      "background": false,
+      "long_running": false,
+      "scopes": [],
+      "owner_chat_tool": "quickbooks"
+    },
+    {
+      "name": "void_entity",
+      "description": "Void a QuickBooks transaction (e.g. 'Invoice', 'SalesReceipt', 'Payment') -- keeps the record but zeroes its amount, for audit-trail-preserving corrections. Requires the entity's current SyncToken from get_entity.",
+      "action_type": "destructive",
+      "chain_callable": true,
+      "effects": [
+        "quickbooks.entity.voided"
+      ],
+      "id_projection": "",
+      "params_schema": {
+        "properties": {
+          "connection_id": {
+            "default": "",
+            "description": "Which connected QuickBooks company to use (see list_connections). Omit if only one company is connected.",
+            "title": "Connection Id",
+            "type": "string"
+          },
+          "entity": {
+            "description": "Entity type to void, e.g. 'Invoice', 'SalesReceipt', 'Payment'.",
+            "title": "Entity",
+            "type": "string"
+          },
+          "entity_id": {
+            "description": "The entity's Id.",
+            "title": "Entity Id",
+            "type": "string"
+          },
+          "sync_token": {
+            "description": "The entity's current SyncToken.",
+            "title": "Sync Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entity",
+          "entity_id",
+          "sync_token"
+        ],
+        "title": "VoidEntityParams",
+        "type": "object"
+      },
+      "return_schema": {
+        "properties": {
+          "entity": {
+            "default": "",
+            "title": "Entity",
+            "type": "string"
+          },
+          "data": {
+            "additionalProperties": true,
+            "title": "Data",
+            "type": "object"
+          }
+        },
+        "title": "EntityDetail",
+        "type": "object"
+      },
+      "event": "quickbooks-connector.void_entity",
+      "background": false,
+      "long_running": false,
+      "scopes": [],
+      "owner_chat_tool": "quickbooks"
+    },
+    {
+      "name": "run_query",
+      "description": "Run a full QuickBooks SQL-like query against any entity, e.g. \"SELECT * FROM Invoice WHERE Balance > '0' ORDERBY TxnDate DESC MAXRESULTS 50\". The most flexible way to filter/sort/limit any QuickBooks data.",
+      "action_type": "read",
+      "chain_callable": true,
+      "effects": [],
+      "id_projection": "",
+      "params_schema": {
+        "properties": {
+          "connection_id": {
+            "default": "",
+            "description": "Which connected QuickBooks company to use (see list_connections). Omit if only one company is connected.",
+            "title": "Connection Id",
+            "type": "string"
+          },
+          "query": {
+            "description": "A full QuickBooks SQL-like query string, e.g. \"SELECT * FROM Invoice WHERE Balance > '0' ORDERBY TxnDate DESC MAXRESULTS 50\".",
+            "title": "Query",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "RunQueryParams",
+        "type": "object"
+      },
+      "return_schema": {
+        "properties": {
+          "rows": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "total_shown": {
+            "default": 0,
+            "title": "Total Shown",
+            "type": "integer"
+          }
+        },
+        "title": "QueryResult",
+        "type": "object"
+      },
+      "event": "",
+      "background": false,
+      "long_running": false,
+      "scopes": [],
+      "owner_chat_tool": "quickbooks"
+    },
+    {
+      "name": "run_report",
+      "description": "Run a QuickBooks report by name -- ProfitAndLoss, BalanceSheet, CashFlow, AgedReceivables, AgedPayables, GeneralLedger, TrialBalance, CustomerBalance, VendorBalance, TransactionList -- optionally scoped to a date range and/or grouped by Month/Quarter/Customer/Vendor.",
+      "action_type": "read",
+      "chain_callable": true,
+      "effects": [],
+      "id_projection": "",
+      "params_schema": {
+        "properties": {
+          "connection_id": {
+            "default": "",
+            "description": "Which connected QuickBooks company to use (see list_connections). Omit if only one company is connected.",
+            "title": "Connection Id",
+            "type": "string"
+          },
+          "report_name": {
+            "description": "QuickBooks report name: 'ProfitAndLoss', 'BalanceSheet', 'CashFlow', 'AgedReceivables', 'AgedPayables', 'GeneralLedger', 'TrialBalance', 'CustomerBalance', 'VendorBalance', 'TransactionList'.",
+            "title": "Report Name",
+            "type": "string"
+          },
+          "start_date": {
+            "default": "",
+            "description": "Report start date YYYY-MM-DD. Omit for report defaults.",
+            "title": "Start Date",
+            "type": "string"
+          },
+          "end_date": {
+            "default": "",
+            "description": "Report end date YYYY-MM-DD. Omit for report defaults.",
+            "title": "End Date",
+            "type": "string"
+          },
+          "summarize_by": {
+            "default": "",
+            "description": "Optional column grouping, e.g. 'Month', 'Quarter', 'Customer', 'Vendor'.",
+            "title": "Summarize By",
+            "type": "string"
+          }
+        },
+        "required": [
+          "report_name"
+        ],
+        "title": "RunReportParams",
+        "type": "object"
+      },
+      "return_schema": {
+        "properties": {
+          "report_name": {
+            "default": "",
+            "title": "Report Name",
+            "type": "string"
+          },
+          "data": {
+            "additionalProperties": true,
+            "title": "Data",
+            "type": "object"
+          }
+        },
+        "title": "ReportResult",
+        "type": "object"
+      },
+      "event": "",
+      "background": false,
+      "long_running": false,
+      "scopes": [],
+      "owner_chat_tool": "quickbooks"
+    },
+    {
+      "name": "get_company_info",
+      "description": "Read the connected QuickBooks company's own profile: legal name, country, fiscal year start, address.",
+      "action_type": "read",
+      "chain_callable": true,
+      "effects": [],
+      "id_projection": "",
+      "params_schema": {
+        "properties": {
+          "connection_id": {
+            "default": "",
+            "description": "Which connected QuickBooks company to use (see list_connections). Omit if only one company is connected.",
+            "title": "Connection Id",
+            "type": "string"
+          }
+        },
+        "title": "GetCompanyInfoParams",
+        "type": "object"
+      },
+      "return_schema": {
+        "properties": {
+          "company_name": {
+            "default": "",
+            "title": "Company Name",
+            "type": "string"
+          },
+          "legal_name": {
+            "default": "",
+            "title": "Legal Name",
+            "type": "string"
+          },
+          "country": {
+            "default": "",
+            "title": "Country",
+            "type": "string"
+          },
+          "fiscal_year_start_month": {
+            "default": "",
+            "title": "Fiscal Year Start Month",
+            "type": "string"
+          },
+          "email": {
+            "default": "",
+            "title": "Email",
+            "type": "string"
+          },
+          "address": {
+            "default": "",
+            "title": "Address",
+            "type": "string"
+          },
+          "realm_id": {
+            "default": "",
+            "title": "Realm Id",
+            "type": "string"
+          }
+        },
+        "title": "CompanyInfo",
+        "type": "object"
+      },
+      "event": "",
+      "background": false,
+      "long_running": false,
+      "scopes": [],
+      "owner_chat_tool": "quickbooks"
+    },
+    {
+      "name": "upload_attachment",
+      "description": "Attach a file to an existing QuickBooks transaction (e.g. a receipt PDF to a Bill, a signed contract to an Invoice) by fetching it from a publicly reachable URL and uploading it server-side.",
+      "action_type": "write",
+      "chain_callable": true,
+      "effects": [
+        "quickbooks.attachment.uploaded"
+      ],
+      "id_projection": "",
+      "params_schema": {
+        "properties": {
+          "connection_id": {
+            "default": "",
+            "description": "Which connected QuickBooks company to use (see list_connections). Omit if only one company is connected.",
+            "title": "Connection Id",
+            "type": "string"
+          },
+          "entity": {
+            "description": "Entity type to attach the file to, e.g. 'Invoice', 'Bill'.",
+            "title": "Entity",
+            "type": "string"
+          },
+          "entity_id": {
+            "description": "The entity's Id to attach the file to.",
+            "title": "Entity Id",
+            "type": "string"
+          },
+          "file_url": {
+            "description": "A publicly reachable https:// URL of the file to attach (fetched and uploaded server-side).",
+            "title": "File Url",
+            "type": "string"
+          },
+          "file_name": {
+            "description": "Filename to store, including extension, e.g. 'receipt.pdf'.",
+            "title": "File Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entity",
+          "entity_id",
+          "file_url",
+          "file_name"
+        ],
+        "title": "AttachmentUploadParams",
+        "type": "object"
+      },
+      "return_schema": {
+        "properties": {
+          "entity": {
+            "default": "",
+            "title": "Entity",
+            "type": "string"
+          },
+          "data": {
+            "additionalProperties": true,
+            "title": "Data",
+            "type": "object"
+          }
+        },
+        "title": "EntityDetail",
+        "type": "object"
+      },
+      "event": "quickbooks-connector.upload_attachment",
+      "background": false,
+      "long_running": false,
+      "scopes": [],
+      "owner_chat_tool": "quickbooks"
+    },
+    {
+      "name": "get_cash_position",
+      "description": "Value-add report: one-glance cash position for the connected company -- bank account balances, total cash, and unpaid/overdue invoice and bill totals, so you see the real financial picture in one call.",
+      "action_type": "read",
+      "chain_callable": true,
+      "effects": [],
+      "id_projection": "",
+      "params_schema": {
+        "properties": {
+          "connection_id": {
+            "default": "",
+            "description": "Which connected QuickBooks company to use (see list_connections). Omit if only one company is connected.",
+            "title": "Connection Id",
+            "type": "string"
+          }
+        },
+        "title": "GetCompanyInfoParams",
+        "type": "object"
+      },
+      "return_schema": {
+        "properties": {
+          "connection_id": {
+            "default": "",
+            "title": "Connection Id",
+            "type": "string"
+          },
+          "bank_balances": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Bank Balances",
+            "type": "array"
+          },
+          "total_cash": {
+            "default": 0.0,
+            "title": "Total Cash",
+            "type": "number"
+          },
+          "unpaid_invoices_total": {
+            "default": 0.0,
+            "title": "Unpaid Invoices Total",
+            "type": "number"
+          },
+          "unpaid_invoices_count": {
+            "default": 0,
+            "title": "Unpaid Invoices Count",
+            "type": "integer"
+          },
+          "overdue_invoices_total": {
+            "default": 0.0,
+            "title": "Overdue Invoices Total",
+            "type": "number"
+          },
+          "overdue_invoices_count": {
+            "default": 0,
+            "title": "Overdue Invoices Count",
+            "type": "integer"
+          },
+          "unpaid_bills_total": {
+            "default": 0.0,
+            "title": "Unpaid Bills Total",
+            "type": "number"
+          },
+          "unpaid_bills_count": {
+            "default": 0,
+            "title": "Unpaid Bills Count",
+            "type": "integer"
+          },
+          "overdue_bills_total": {
+            "default": 0.0,
+            "title": "Overdue Bills Total",
+            "type": "number"
+          },
+          "overdue_bills_count": {
+            "default": 0,
+            "title": "Overdue Bills Count",
+            "type": "integer"
+          }
+        },
+        "title": "CashPositionReport",
+        "type": "object"
+      },
+      "event": "",
+      "background": false,
+      "long_running": false,
+      "scopes": [],
+      "owner_chat_tool": "quickbooks"
+    },
+    {
+      "name": "get_overdue_invoices",
+      "description": "Value-add report: flag every unpaid invoice overdue by at least a given number of days, sorted worst-first -- the AR collections list.",
+      "action_type": "read",
+      "chain_callable": true,
+      "effects": [],
+      "id_projection": "",
+      "params_schema": {
+        "properties": {
+          "connection_id": {
+            "default": "",
+            "description": "Which connected QuickBooks company to use (see list_connections). Omit if only one company is connected.",
+            "title": "Connection Id",
+            "type": "string"
+          },
+          "min_days_overdue": {
+            "default": 1,
+            "description": "Only flag invoices/bills overdue by at least this many days.",
+            "title": "Min Days Overdue",
+            "type": "integer"
+          }
+        },
+        "title": "OverdueReportParams",
+        "type": "object"
+      },
+      "return_schema": {
+        "properties": {
+          "connection_id": {
+            "default": "",
+            "title": "Connection Id",
+            "type": "string"
+          },
+          "count": {
+            "default": 0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "total_amount": {
+            "default": 0.0,
+            "title": "Total Amount",
+            "type": "number"
+          },
+          "invoices": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Invoices",
+            "type": "array"
+          }
+        },
+        "title": "OverdueInvoicesReport",
+        "type": "object"
+      },
+      "event": "",
+      "background": false,
+      "long_running": false,
+      "scopes": [],
+      "owner_chat_tool": "quickbooks"
+    }
+  ],
+  "signals": [],
+  "schedules": [],
+  "required_scopes": [],
+  "icon_size_bytes": 677,
+  "webhooks": [
+    {
+      "path": "/callback",
+      "method": "POST",
+      "secret_header": ""
+    }
+  ],
+  "lifecycle": {
+    "health_check": {
+      "interval_sec": 60
+    }
+  },
+  "secrets": [
+    {
+      "name": "quickbooks_connections",
+      "description": "JSON array of connected QuickBooks companies: client_id/client_secret (your own Intuit Developer app), access_token, refresh_token, expiry timestamps, realm_id, company_name, label. Managed through connect_quickbooks / disconnect_quickbooks -- you should not need to edit this directly.",
+      "required": true,
+      "write_mode": "both",
+      "max_bytes": 65536,
+      "scope": "user",
+      "rotation_hint_days": 90
+    },
+    {
+      "name": "quickbooks_pending",
+      "description": "JSON array of in-flight QuickBooks OAuth connection attempts (client_id/client_secret captured at connect_quickbooks time, keyed by a pending id used as the OAuth `state`), consumed and removed by the callback webhook once the code-for-token exchange completes. write_mode='extension': only connector code writes this, never the Panel UI directly.",
+      "required": false,
+      "write_mode": "extension",
+      "max_bytes": 16384,
+      "scope": "user"
+    }
+  ],
+  "panels": [
+    {
+      "panel_id": "secrets",
+      "slot": "right",
+      "title": "Secrets",
+      "tree": {},
+      "icon": "KeyRound",
+      "refresh": "manual",
+      "center_overlay": false
+    },
+    {
+      "panel_id": "quickbooks_connect",
+      "slot": "left",
+      "title": "QuickBooks Online",
+      "tree": {},
+      "icon": "🧾",
+      "refresh": "manual",
+      "center_overlay": false,
+      "default_width": 320,
+      "min_width": 260,
+      "max_width": 420
+    },
+    {
+      "panel_id": "quickbooks_connect_help",
+      "slot": "center",
+      "title": "How to connect QuickBooks Online",
+      "tree": {},
+      "icon": "",
+      "refresh": "manual",
+      "center_overlay": true
+    },
+    {
+      "panel_id": "quickbooks_settings",
+      "slot": "center",
+      "title": "QuickBooks Online -- App settings",
+      "tree": {},
+      "icon": "",
+      "refresh": "manual",
+      "center_overlay": false
+    }
+  ]
+}
