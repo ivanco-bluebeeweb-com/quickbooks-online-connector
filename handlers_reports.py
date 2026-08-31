@@ -39,7 +39,7 @@ async def run_query(ctx, params: RunQueryParams) -> ActionResult:
             continue
         if isinstance(val, list):
             rows.extend(val)
-    return ActionResult.ok(QueryResult(rows=rows, total_shown=len(rows)))
+    return ActionResult.success(QueryResult(rows=rows, total_shown=len(rows))), summary="Query run requested."
 
 
 @chat.function(
@@ -65,7 +65,7 @@ async def run_report(ctx, params: RunReportParams) -> ActionResult:
         ctx, conn, "GET", f"/reports/{params.report_name}",
         params=query_params or None, action=f"run report {params.report_name}",
     )
-    return ActionResult.ok(ReportResult(report_name=params.report_name, data=result if isinstance(result, dict) else {}))
+    return ActionResult.success(ReportResult(report_name=params.report_name, data=result if isinstance(result, dict) else {})), summary="Report run requested."
 
 
 @chat.function(
@@ -86,7 +86,7 @@ async def get_company_info(ctx, params: GetCompanyInfoParams) -> ActionResult:
     address = ", ".join(filter(None, [
         addr.get("Line1", ""), addr.get("City", ""), addr.get("CountrySubDivisionCode", ""), addr.get("PostalCode", ""),
     ]))
-    return ActionResult.ok(CompanyInfo(
+    return ActionResult.success(CompanyInfo(
         company_name=ci.get("CompanyName", ""),
         legal_name=ci.get("LegalName", ""),
         country=ci.get("Country", ""),
@@ -94,7 +94,7 @@ async def get_company_info(ctx, params: GetCompanyInfoParams) -> ActionResult:
         email=(ci.get("Email", {}) or {}).get("Address", ""),
         address=address,
         realm_id=conn.get("realm_id", ""),
-    ))
+    )), summary="Company info retrieved."
 
 
 @chat.function(
@@ -114,7 +114,7 @@ async def upload_attachment(ctx, params: AttachmentUploadParams) -> ActionResult
         ctx, conn, entity=params.entity, entity_id=params.entity_id,
         file_url=params.file_url, file_name=params.file_name,
     )
-    return ActionResult.ok(EntityDetail(entity="Attachable", data=result))
+    return ActionResult.success(EntityDetail(entity="Attachable", data=result)), summary="Upload attachment done."
 
 
 @chat.function(
@@ -161,7 +161,7 @@ async def get_cash_position(ctx, params: GetCompanyInfoParams) -> ActionResult:
     overdue_bills = [b for b in bills if b.get("DueDate", "9999-99-99") < today]
     overdue_bills_total = sum(float(b.get("Balance", 0) or 0) for b in overdue_bills)
 
-    return ActionResult.ok(CashPositionReport(
+    return ActionResult.success(CashPositionReport(
         connection_id=conn.get("id", ""),
         bank_balances=bank_balances,
         total_cash=round(total_cash, 2),
@@ -173,7 +173,7 @@ async def get_cash_position(ctx, params: GetCompanyInfoParams) -> ActionResult:
         unpaid_bills_count=len(bills),
         overdue_bills_total=round(overdue_bills_total, 2),
         overdue_bills_count=len(overdue_bills),
-    ))
+    )), summary="Cash position retrieved."
 
 
 @chat.function(
@@ -216,9 +216,9 @@ async def get_overdue_invoices(ctx, params: OverdueReportParams) -> ActionResult
                 "days_overdue": days_over,
             })
     flagged.sort(key=lambda r: r["days_overdue"], reverse=True)
-    return ActionResult.ok(OverdueInvoicesReport(
+    return ActionResult.success(OverdueInvoicesReport(
         connection_id=conn.get("id", ""),
         count=len(flagged),
         total_amount=round(sum(float(r["balance"] or 0) for r in flagged), 2),
         invoices=flagged,
-    ))
+    )), summary="Overdue invoices retrieved."

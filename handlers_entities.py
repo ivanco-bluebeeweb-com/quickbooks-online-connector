@@ -61,7 +61,7 @@ async def list_entities(ctx, params: ListEntitiesParams) -> ActionResult:
     rows = qr.get(entity, []) if isinstance(qr, dict) else []
     if not isinstance(rows, list):
         rows = []
-    return ActionResult.ok(EntityList(entity=entity, rows=rows, total_shown=len(rows)))
+    return ActionResult.success(EntityList(entity=entity, rows=rows, total_shown=len(rows))), summary="Entities listed."
 
 
 @chat.function(
@@ -77,7 +77,7 @@ async def get_entity(ctx, params: GetEntityParams) -> ActionResult:
     entity = params.entity.strip()
     result = await qc.request(ctx, conn, "GET", f"/{entity.lower()}/{params.entity_id}", action=f"get {entity}")
     data = result.get(entity, {}) if isinstance(result, dict) else {}
-    return ActionResult.ok(EntityDetail(entity=entity, data=data))
+    return ActionResult.success(EntityDetail(entity=entity, data=data)), summary="Entity retrieved."
 
 
 @chat.function(
@@ -99,7 +99,7 @@ async def create_entity(ctx, params: CreateEntityParams) -> ActionResult:
         return ActionResult.fail(qc.fail(qc.VALIDATION_FAILED, f"fields_json is not valid JSON: {body}"))
     result = await qc.request(ctx, conn, "POST", f"/{entity.lower()}", json_body=body, action=f"create {entity}")
     data = result.get(entity, {}) if isinstance(result, dict) else {}
-    return ActionResult.ok(EntityDetail(entity=entity, data=data))
+    return ActionResult.success(EntityDetail(entity=entity, data=data)), summary="Entity created."
 
 
 @chat.function(
@@ -124,7 +124,7 @@ async def update_entity(ctx, params: UpdateEntityParams) -> ActionResult:
     patch.setdefault("sparse", True)
     result = await qc.request(ctx, conn, "POST", f"/{entity.lower()}", json_body=patch, action=f"update {entity}")
     data = result.get(entity, {}) if isinstance(result, dict) else {}
-    return ActionResult.ok(EntityDetail(entity=entity, data=data))
+    return ActionResult.success(EntityDetail(entity=entity, data=data)), summary="Entity updated."
 
 
 @chat.function(
@@ -147,7 +147,7 @@ async def delete_entity(ctx, params: DeleteEntityParams) -> ActionResult:
         ctx, conn, "POST", f"/{entity.lower()}", params={"operation": "delete"},
         json_body=body, action=f"delete {entity}",
     )
-    return ActionResult.ok(DeleteResult(deleted=True, entity=entity, entity_id=params.entity_id))
+    return ActionResult.success(DeleteResult(deleted=True, entity=entity, entity_id=params.entity_id)), summary="Entity deleted."
 
 
 @chat.function(
@@ -170,7 +170,7 @@ async def send_entity(ctx, params: SendEntityParams) -> ActionResult:
         action=f"send {entity}",
     )
     data = result.get(entity, {}) if isinstance(result, dict) else {}
-    return ActionResult.ok(EntityDetail(entity=entity, data=data))
+    return ActionResult.success(EntityDetail(entity=entity, data=data)), summary="Entity send requested."
 
 
 @chat.function(
@@ -194,4 +194,4 @@ async def void_entity(ctx, params: VoidEntityParams) -> ActionResult:
         json_body=body, action=f"void {entity}",
     )
     data = result.get(entity, {}) if isinstance(result, dict) else {}
-    return ActionResult.ok(EntityDetail(entity=entity, data=data))
+    return ActionResult.success(EntityDetail(entity=entity, data=data)), summary="Void entity done."
