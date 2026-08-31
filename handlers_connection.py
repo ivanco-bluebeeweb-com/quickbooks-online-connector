@@ -166,7 +166,7 @@ async def connect_quickbooks(ctx, params: ConnectQuickbooksParams) -> ActionResu
     await _save_pending(ctx, all_pending)
 
     authorize_url = qc.build_authorize_url(params.client_id.strip(), redirect_uri, pending_id)
-    return ActionResult.success(ConsentUrlResult(authorize_url=authorize_url, redirect_uri=redirect_uri)), summary="Quickbooks connected."
+    return ActionResult.success(ConsentUrlResult(authorize_url=authorize_url, redirect_uri=redirect_uri), summary="Quickbooks connected.")
 
 
 @ext.webhook("callback")
@@ -239,7 +239,7 @@ async def handle_oauth_callback(ctx, headers, body, query_params):
 async def list_connections(ctx, params: NoParams) -> ActionResult:
     """List every connected QuickBooks company for this account."""
     connections = await _load_connections(ctx)
-    return ActionResult.success(ProviderConnectionList(connections=[_connection_to_entity(c) for c in connections])), summary="Connections listed."
+    return ActionResult.success(ProviderConnectionList(connections=[_connection_to_entity(c) for c in connections]), summary="Connections listed.")
 
 
 @chat.function(
@@ -259,4 +259,4 @@ async def disconnect_quickbooks(ctx, params: DisconnectQuickbooksParams) -> Acti
     if len(remaining) == len(connections):
         return ActionResult.error("No such QuickBooks connection.", code="QUICKBOOKS_NOT_CONNECTED")
     await _save_connections(ctx, remaining)
-    return ActionResult.success(DeleteResult(deleted=True, detail="QuickBooks connection removed.")), summary="Quickbooks disconnected."
+    return ActionResult.success(DeleteResult(deleted=True, detail="QuickBooks connection removed."), summary="Quickbooks disconnected.")
